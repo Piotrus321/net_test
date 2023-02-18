@@ -1,14 +1,15 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
-namespace Company.Function
+namespace net_test
 {
     public static class HttpTrigger1
     {
@@ -17,6 +18,7 @@ namespace Company.Function
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
             ILogger log)
         {
+
             log.LogInformation("C# HTTP trigger function processed a request.");
 
             string name = req.Query["name"];
@@ -30,6 +32,31 @@ namespace Company.Function
                 : $"Hello, {name}. This HTTP triggered function executed successfully.";
 
             return new OkObjectResult(responseMessage);
+        }
+
+        public static void Main(string[] args)
+        {
+            using var dbContext = new AccessDatabaseContext();
+            DbSet<TableRecord> tableRecords = dbContext.Table1;
+            Console.WriteLine("DB content:");
+            foreach (TableRecord record in tableRecords)
+            {
+                Console.WriteLine(record);
+            }
+
+            using var memoryStream = new MemoryStream();
+            {
+                using var streamWriter = new StreamWriter(memoryStream, leaveOpen: true);
+                using var csvWriter = new CsvHelper.CsvWriter(streamWriter, System.Globalization.CultureInfo.InvariantCulture);
+                csvWriter.WriteRecords(tableRecords);
+            }
+            {
+                memoryStream.Position = 0;
+                using var streamReader = new StreamReader(memoryStream);
+                string csvContent = streamReader.ReadToEnd();
+                Console.WriteLine("\nCsv content:");
+                Console.WriteLine(csvContent);
+            }
         }
     }
 }
